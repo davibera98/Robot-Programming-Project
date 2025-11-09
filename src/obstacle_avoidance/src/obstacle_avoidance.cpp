@@ -17,6 +17,35 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
     if (!velocity_received) return;
     ROS_INFO("Laser is working");
     velocity_received = false;
+
+
+    //First try
+
+    //take the index and the distance of the closest obstacle from the laser
+    int index = -1;
+    float min_distance = 100000000;
+    for (int i = 0; i < msg->ranges.size(); ++i) {
+        //distance of the ray at index i
+        float actual_distance = msg->ranges[i]; 
+        if (!std::isinf(actual_distance) && !std::isnan(actual_distance) && actual_distance < min_distance) {
+            min_distance = actual_distance;
+            index = i;
+        }
+    }
+
+    if (index == -1){ 
+        ROS_INFO("Nessun ostacolo rilevato!"); 
+        return; 
+    }
+    ROS_INFO("Ostacolo rilevato");
+
+    //direction of the closest obstacle from the laser
+    float obstacle_direction = msg->angle_min + (index * msg->angle_increment);
+
+
+
+
+
 }
 
 int main(int argc, char** argv) {
