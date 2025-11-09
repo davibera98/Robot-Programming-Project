@@ -1,6 +1,9 @@
 #include "ros/ros.h"
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/LaserScan.h>
+#include <tf/transform_listener.h>
+#include <geometry_msgs/PointStamped.h>
+#include <cmath>
 
 geometry_msgs::Twist keyboard_velocity;
 bool velocity_received = false;
@@ -41,6 +44,17 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
 
     //direction of the closest obstacle from the laser
     float obstacle_direction = msg->angle_min + (index * msg->angle_increment);
+    
+    //Transforming the obstacle in (x,y) respect to the robot
+
+    //coordinates of the closest robot respect to the laser frame
+    geometry_msgs::PointStamped obstacle_from_laser;
+    obstacle_from_laser.header = msg->header;
+    //computing the coordinate x and y 
+    obstacle_from_laser.point.x = min_distance * cos(obstacle_direction);
+    obstacle_from_laser.point.y = min_distance * sin(obstacle_direction);
+    obstacle_from_laser.point.z = 0.0;
+
 
 
 
