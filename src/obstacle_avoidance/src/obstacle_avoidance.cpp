@@ -5,6 +5,9 @@
 #include <geometry_msgs/PointStamped.h>
 #include <cmath>
 
+
+using namespace std;
+
 geometry_msgs::Twist keyboard_velocity;
 bool velocity_received = false;
 
@@ -30,7 +33,7 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
     for (int i = 0; i < msg->ranges.size(); ++i) {
         //distance of the ray at index i
         float actual_distance = msg->ranges[i]; 
-        if (!std::isinf(actual_distance) && !std::isnan(actual_distance) && actual_distance < min_distance) {
+        if (!isinf(actual_distance) && !isnan(actual_distance) && actual_distance < min_distance) {
             min_distance = actual_distance;
             index = i;
         }
@@ -50,14 +53,26 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
     //coordinates of the closest robot respect to the laser frame
     geometry_msgs::PointStamped obstacle_from_laser;
     obstacle_from_laser.header = msg->header;
-    //computing the coordinate x and y 
+    //computing the coordinate x and y in laser frame
     obstacle_from_laser.point.x = min_distance * cos(obstacle_direction);
     obstacle_from_laser.point.y = min_distance * sin(obstacle_direction);
     obstacle_from_laser.point.z = 0.0;
 
 
+    static tf::TransformListener listener;
+    geometry_msgs::PointStamped obstacle_from_robot;
+
+    try {
+        listener.waitForTransform("base_footprint", obstacle_from_laser.header.frame_id, ros::Time(0), ros::Duration(1.0));
+        listener.transformPoint("base_footprint", obstacle_from_laser, obstacle_from_robot);
+    } catch(tf::TransformException &e) {
+        ROS_ERROR("Transform error: %s", e.what());
+        return;
+    }
 
 
+    float distance_from_robot = sqrt(pow(obstacle_from_robot.point.x, 2) + pow(obstacle_from_robot.point.y, 2));
+    
 
 
 }
