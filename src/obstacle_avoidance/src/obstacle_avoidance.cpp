@@ -3,11 +3,26 @@
 #include <sensor_msgs/LaserScan.h>
 #include <tf/transform_listener.h>
 #include <geometry_msgs/PointStamped.h>
+#include <tf/transform_datatypes.h>
 #include <cmath>
 
 
 using namespace std;
 
+const float AVOIDANCE_DISTANCE = 0.5;
+const float REPULSIVE_FORCE = 0.1;
+
+
+double first_yaw = 0.0;     
+bool set_yaw = false;
+const double ROTATION_GOAL = M_PI;  
+const float ROTATION_SPEED = 1.0; // rad/s
+
+
+enum RobotState {ACTIVE, ROTATING, GOING_BACK};
+RobotState robot_state = ACTIVE;
+
+ros::Publisher pub_velocity;
 geometry_msgs::Twist keyboard_velocity;
 bool velocity_received = false;
 
@@ -26,7 +41,7 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
 
 
     //First try
-
+    
     //take the index and the distance of the closest obstacle from the laser
     int index = -1;
     float min_distance = 100000000;
@@ -72,8 +87,70 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
 
 
     float distance_from_robot = sqrt(pow(obstacle_from_robot.point.x, 2) + pow(obstacle_from_robot.point.y, 2));
-    
 
+
+    geometry_msgs::Twist msg_send;
+
+    if(robot_state == ACTIVE){
+        float force_x = - (obstacle_from_robot.point.x / distance_from_robot) * REPULSIVE_FORCE;
+        float force_y = - (obstacle_from_robot.point.y / distance_from_robot) * REPULSIVE_FORCE;
+
+        msg_send.linear.x = keyboard_velocity.linear.x + force_x;
+        msg_send.linear.y = keyboard_velocity.linear.y + force_y;
+        msg_send.angular.z = keyboard_velocity.angular.z;
+        
+        // Controllo soglia
+        if(distance_from_robot < AVOIDANCE_DISTANCE){
+            robot_state = ROTATING; 
+        }
+    }
+
+    else if(robot_state == ROTATING){
+        msg_send.linear.x = 0.0;
+        msg_send.linear.y = 0.0;
+
+        tf::StampedTransform transform;
+        try{
+            listener.lookupTransform("odom", "base_footprint", ros::Time(0), transform);
+        } catch(tf::TransformException &e){
+            ROS_ERROR("%s", e.what());
+            return;
+        }
+
+        double current_yaw = tf::getYaw(transform.getRotation());
+
+        
+        if(!set_yaw){
+            first_yaw = current_yaw;
+            set_yaw = true;
+        }
+
+        double delta_yaw = fabs(current_yaw - first_yaw);
+
+        if(delta_yaw < ROTATION_GOAL){
+            msg_send.angular.z = ROTATION_SPEED;
+        } 
+
+        else{
+            msg_send.angular.z = 0.0;
+            robot_state = GOING_BACK;
+            set_yaw = false; 
+        }
+
+    }
+
+
+    else {  
+        msg_send.linear.x = 1.0;  
+        msg_send.linear.y = 0.0;
+        msg_send.angular.z = 0.0;  
+
+        if(distance_from_robot >= AVOIDANCE_DISTANCE){
+            robot_state = ACTIVE;
+        }
+    }
+
+    pub_velocity.publish(msg_send);
 
 }
 
@@ -87,6 +164,8 @@ int main(int argc, char** argv) {
 
     ros::Subscriber laser_sub = nh.subscribe("base_scan", 1, laser_callback);
     ROS_INFO("Node started");
+
+    pub_velocity = nh.advertise<geometry_msgs::Twist>("cmd_vel",1);
 
     ros::spin();
 

@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   std_msgs
+  tf
 )
 
 ## System dependencies are found with CMake's conventions
@@ -106,7 +107,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES obstacle_avoidance
-  CATKIN_DEPENDS geometry_msgs roscpp sensor_msgs std_msgs
+  CATKIN_DEPENDS geometry_msgs roscpp sensor_msgs std_msgs tf
 #  DEPENDS system_lib
 )
 
@@ -135,6 +136,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(obstacle_avoidance_node src/obstacle_avoidance.cpp)
+add_dependencies(obstacle_avoidance_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 
 ## Rename C++ executable without prefix
