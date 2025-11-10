@@ -9,7 +9,7 @@
 
 using namespace std;
 
-const float AVOIDANCE_DISTANCE = 0.5;
+const float AVOIDANCE_DISTANCE = 0.4;
 const float REPULSIVE_FORCE = 0.1;
 
 
@@ -28,7 +28,6 @@ bool velocity_received = false;
 
 void keyboard_vel_callback(const geometry_msgs::Twist::ConstPtr& msg){
     keyboard_velocity = *msg;
-
     if(keyboard_velocity.linear.x != 0 || keyboard_velocity.angular.z != 0){
         velocity_received = true;  
     }
@@ -36,7 +35,7 @@ void keyboard_vel_callback(const geometry_msgs::Twist::ConstPtr& msg){
 
 void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
     if (!velocity_received) return;
-    ROS_INFO("Laser is working");
+    //ROS_INFO("Laser is working");
     velocity_received = false;
 
 
@@ -58,7 +57,7 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
         ROS_INFO("Nessun ostacolo rilevato!"); 
         return; 
     }
-    ROS_INFO("Ostacolo rilevato");
+    //ROS_INFO("Ostacolo rilevato");
 
     //direction of the closest obstacle from the laser
     float obstacle_direction = msg->angle_min + (index * msg->angle_increment);
@@ -79,7 +78,7 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
 
     try {
         listener.waitForTransform("base_footprint", obstacle_from_laser.header.frame_id, ros::Time(0), ros::Duration(1.0));
-        listener.transformPoint("base_footprint", obstacle_from_laser, obstacle_from_robot);
+        listener.transformPoint("base_footprint", ros::Time(0), obstacle_from_laser, obstacle_from_laser.header.frame_id, obstacle_from_robot);
     } catch(tf::TransformException &e) {
         ROS_ERROR("Transform error: %s", e.what());
         return;
@@ -92,22 +91,31 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
     geometry_msgs::Twist msg_send;
 
     if(robot_state == ACTIVE){
+        ROS_INFO("SONO AL SICURO");
+        if(distance_from_robot < AVOIDANCE_DISTANCE){
+            msg_send.linear.x = 0.0;
+            msg_send.linear.y = 0.0;
+            msg_send.angular.z = 0.0;
+            robot_state = ROTATING; 
+            ROS_INFO("Entro in rotazione");
+        }
+        else{
         float force_x = - (obstacle_from_robot.point.x / distance_from_robot) * REPULSIVE_FORCE;
         float force_y = - (obstacle_from_robot.point.y / distance_from_robot) * REPULSIVE_FORCE;
 
         msg_send.linear.x = keyboard_velocity.linear.x + force_x;
         msg_send.linear.y = keyboard_velocity.linear.y + force_y;
         msg_send.angular.z = keyboard_velocity.angular.z;
+    }
         
-        // Controllo soglia
-        if(distance_from_robot < AVOIDANCE_DISTANCE){
-            robot_state = ROTATING; 
-        }
+
     }
 
     else if(robot_state == ROTATING){
         msg_send.linear.x = 0.0;
         msg_send.linear.y = 0.0;
+        ROS_INFO("SONO IN ROTAZIONE");
+
 
         tf::StampedTransform transform;
         try{
@@ -118,20 +126,25 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
         }
 
         double current_yaw = tf::getYaw(transform.getRotation());
+        ROS_INFO("current_yaw = %.3f, first_yaw = %.3f", current_yaw, first_yaw);
 
         
         if(!set_yaw){
             first_yaw = current_yaw;
             set_yaw = true;
+            ROS_INFO("Imposto first_yaw = %.3f", first_yaw);
         }
 
         double delta_yaw = fabs(current_yaw - first_yaw);
+        ROS_INFO("delta_yaw = %.3f", delta_yaw);
 
         if(delta_yaw < ROTATION_GOAL){
             msg_send.angular.z = ROTATION_SPEED;
+            
         } 
 
         else{
+            ROS_INFO("Rotazione completata, passo a GOING_BACK");
             msg_send.angular.z = 0.0;
             robot_state = GOING_BACK;
             set_yaw = false; 
@@ -141,7 +154,9 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
 
 
     else {  
-        msg_send.linear.x = 1.0;  
+
+        ROS_INFO("STO TORNANDO INDIETRO");
+        msg_send.linear.x = 0.5;  
         msg_send.linear.y = 0.0;
         msg_send.angular.z = 0.0;  
 
