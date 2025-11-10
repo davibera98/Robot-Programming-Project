@@ -6,6 +6,11 @@
 #include <tf/transform_datatypes.h>
 #include <cmath>
 
+double normalize_angle(double angle){
+    while(angle > M_PI) angle -= 2 * M_PI;
+    while(angle < -M_PI) angle += 2 * M_PI;
+    return angle;
+}
 
 using namespace std;
 
@@ -15,8 +20,9 @@ const float REPULSIVE_FORCE = 0.1;
 
 double first_yaw = 0.0;     
 bool set_yaw = false;
-const double ROTATION_GOAL = M_PI;  
-const float ROTATION_SPEED = 1.0; // rad/s
+const double ROTATION_GOAL = 3.10;  
+float ROTATION_SPEED = -0.5; // rad/s
+
 
 
 enum RobotState {ACTIVE, ROTATING, GOING_BACK};
@@ -96,6 +102,10 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
             msg_send.linear.x = 0.0;
             msg_send.linear.y = 0.0;
             msg_send.angular.z = 0.0;
+          //  if(obstacle_from_robot.point.y > 0)
+          //      ROTATION_SPEED = -0.5;  
+          //  else
+          //      ROTATION_SPEED = 0.5;  
             robot_state = ROTATING; 
             ROS_INFO("Entro in rotazione");
         }
@@ -135,19 +145,19 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
             ROS_INFO("Imposto first_yaw = %.3f", first_yaw);
         }
 
-        double delta_yaw = fabs(current_yaw - first_yaw);
-        ROS_INFO("delta_yaw = %.3f", delta_yaw);
+        double delta_yaw = normalize_angle(current_yaw - first_yaw);
+        double abs_delta_yaw = fabs(delta_yaw);
 
-        if(delta_yaw < ROTATION_GOAL){
+        ROS_INFO("delta_yaw_norm = %.3f", abs_delta_yaw);
+
+        if(abs_delta_yaw < ROTATION_GOAL){
             msg_send.angular.z = ROTATION_SPEED;
-            
-        } 
-
-        else{
+        }
+        else {
             ROS_INFO("Rotazione completata, passo a GOING_BACK");
             msg_send.angular.z = 0.0;
             robot_state = GOING_BACK;
-            set_yaw = false; 
+            set_yaw = false;
         }
 
     }
