@@ -6,6 +6,7 @@
 #include <tf/transform_datatypes.h>
 #include <cmath>
 
+
 double normalize_angle(double angle){
     while(angle > M_PI) angle -= 2 * M_PI;
     while(angle < -M_PI) angle += 2 * M_PI;
@@ -16,6 +17,8 @@ using namespace std;
 
 const float AVOIDANCE_DISTANCE = 0.3;
 const float REPULSIVE_FORCE = 0.1;
+
+bool state_info = false;
 
 
 double first_yaw = 0.0;     
@@ -32,6 +35,8 @@ ros::Publisher pub_velocity;
 geometry_msgs::Twist keyboard_velocity;
 bool velocity_received = false;
 
+
+// velocity from the keyboard
 void keyboard_vel_callback(const geometry_msgs::Twist::ConstPtr& msg){
     keyboard_velocity = *msg;
     if(keyboard_velocity.linear.x != 0 || keyboard_velocity.angular.z != 0){
@@ -44,8 +49,6 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
     //ROS_INFO("Laser is working");
     velocity_received = false;
 
-
-    //First try
     
     //take the index and the distance of the closest obstacle from the laser
     int index = -1;
@@ -60,9 +63,10 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
     }
 
     if (index == -1){ 
-        ROS_INFO("Nessun ostacolo rilevato!"); 
+        ROS_INFO("No obstacles detected!"); 
         return; 
     }
+
     //ROS_INFO("Ostacolo rilevato");
 
     //direction of the closest obstacle from the laser
@@ -73,6 +77,7 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
     //coordinates of the closest robot respect to the laser frame
     geometry_msgs::PointStamped obstacle_from_laser;
     obstacle_from_laser.header = msg->header;
+
     //computing the coordinate x and y in laser frame
     obstacle_from_laser.point.x = min_distance * cos(obstacle_direction);
     obstacle_from_laser.point.y = min_distance * sin(obstacle_direction);
@@ -97,7 +102,7 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
     geometry_msgs::Twist msg_send;
 
     if(robot_state == ACTIVE){
-        ROS_INFO("SONO AL SICURO");
+        //ROS_INFO("I'm safe");
         if(distance_from_robot < AVOIDANCE_DISTANCE){
             msg_send.linear.x = 0.0;
             msg_send.linear.y = 0.0;
@@ -107,11 +112,19 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
             else
                 ROTATION_SPEED = 0.5;  
             robot_state = ROTATING; 
-            ROS_INFO("Entro in rotazione");
+            //ROS_INFO("Moving to ROTATING state");
         }
         else{
         float force_x = - (obstacle_from_robot.point.x / distance_from_robot) * REPULSIVE_FORCE;
         float force_y = - (obstacle_from_robot.point.y / distance_from_robot) * REPULSIVE_FORCE;
+        //ROS_INFO("Keyboard Velocity: linear_x = %.2f, linear_y = %.2f, angular_z = %.2f",
+        // keyboard_velocity.linear.x,
+        // keyboard_velocity.linear.y,
+        // keyboard_velocity.angular.z);
+
+        //ROS_INFO("Repulsive Force: force_x = %.2f, force_y = %.2f",
+        //        force_x,
+        //        force_y);
 
         msg_send.linear.x = keyboard_velocity.linear.x + force_x;
         msg_send.linear.y = keyboard_velocity.linear.y + force_y;
@@ -124,7 +137,10 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
     else if(robot_state == ROTATING){
         msg_send.linear.x = 0.0;
         msg_send.linear.y = 0.0;
-        ROS_INFO("SONO IN ROTAZIONE");
+        if (!state_info) {
+              ROS_INFO("I'm rotating");
+              state_info = true;  
+         }
 
 
         tf::StampedTransform transform;
@@ -136,28 +152,30 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
         }
 
         double current_yaw = tf::getYaw(transform.getRotation());
-        ROS_INFO("current_yaw = %.3f, first_yaw = %.3f", current_yaw, first_yaw);
+        //ROS_INFO("current_yaw = %.3f, first_yaw = %.3f", current_yaw, first_yaw);
 
         
         if(!set_yaw){
             first_yaw = current_yaw;
             set_yaw = true;
-            ROS_INFO("Imposto first_yaw = %.3f", first_yaw);
+            //ROS_INFO("Imposto first_yaw = %.3f", first_yaw);
         }
 
         double delta_yaw = normalize_angle(current_yaw - first_yaw);
         double abs_delta_yaw = fabs(delta_yaw);
 
-        ROS_INFO("delta_yaw_norm = %.3f", abs_delta_yaw);
+        //ROS_INFO("delta_yaw_norm = %.3f", abs_delta_yaw);
 
         if(abs_delta_yaw < ROTATION_GOAL){
             msg_send.angular.z = ROTATION_SPEED;
         }
         else {
-            ROS_INFO("Rotazione completata, passo a GOING_BACK");
+
+            ROS_INFO("Rotated for 180 degrees, moving to GOING_BACK state");
             msg_send.angular.z = 0.0;
             robot_state = GOING_BACK;
             set_yaw = false;
+            state_info=false;
         }
 
     }
@@ -165,13 +183,18 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
 
     else {  
 
-        ROS_INFO("STO TORNANDO INDIETRO");
+        if (!state_info) {
+              ROS_INFO("Going back");
+              state_info = true;  
+         }
         msg_send.linear.x = 0.5;  
         msg_send.linear.y = 0.0;
         msg_send.angular.z = 0.0;  
 
         if(distance_from_robot >= AVOIDANCE_DISTANCE){
             robot_state = ACTIVE;
+            state_info=false;
+            ROS_INFO("I'm back in a safe zone");
         }
     }
 
