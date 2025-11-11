@@ -28,28 +28,25 @@ catkin build
 
 ### Run
 
-1. **Start roscore**
-Start the roscore in a terminal
+1. Start the roscore in a terminal
+
   ```
   roscore
   ```
 
-2. **Run the node**
-Open a different terminal and run the node
+2. Open a different terminal and run the node
  ```
 cd Robot-Programming-Project
 source devel/setup.bash
 rosrun obstacle_avoidance obstacle_avoidance_node
 ```
-3. **Run teleop**
-Open a different terminal and run teleop_twist_keyboard
+3. Open a different terminal and run teleop_twist_keyboard
  ```
 cd Robot-Programming-Project
 source devel/setup.bash
 rosrun teleop_twist_keyboard_cpp teleop_twist_keyboard cmd_vel:=keyboard_vel_call
 ```
-4. **Run the simulator**
-Open a different terminal and run the simulator
+4. Open a different terminal and run the simulator
  ```
 cd Robot-Programming-Project
 source devel/setup.bash
@@ -57,6 +54,6 @@ rosrun stage_ros stageros /home/vboxuser/RP_project/Robot-Programming-Project/sr
 
 ```
 
-Go to the 3° terminal and move the robot in the simulator using the keyboard
+Go to the teleop terminal and move the robot in the simulator using the keyboard
 
 
