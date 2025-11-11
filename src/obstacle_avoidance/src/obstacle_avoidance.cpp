@@ -14,14 +14,14 @@ double normalize_angle(double angle){
 
 using namespace std;
 
-const float AVOIDANCE_DISTANCE = 0.4;
+const float AVOIDANCE_DISTANCE = 0.3;
 const float REPULSIVE_FORCE = 0.1;
 
 
 double first_yaw = 0.0;     
 bool set_yaw = false;
 const double ROTATION_GOAL = 3.10;  
-float ROTATION_SPEED = -0.5; // rad/s
+float ROTATION_SPEED; // rad/s
 
 
 
@@ -102,10 +102,10 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
             msg_send.linear.x = 0.0;
             msg_send.linear.y = 0.0;
             msg_send.angular.z = 0.0;
-          //  if(obstacle_from_robot.point.y > 0)
-          //      ROTATION_SPEED = -0.5;  
-          //  else
-          //      ROTATION_SPEED = 0.5;  
+            if(obstacle_from_robot.point.y > 0)
+                ROTATION_SPEED = -0.5;  
+            else
+                ROTATION_SPEED = 0.5;  
             robot_state = ROTATING; 
             ROS_INFO("Entro in rotazione");
         }
