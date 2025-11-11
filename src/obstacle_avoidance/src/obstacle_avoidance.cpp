@@ -36,7 +36,7 @@ geometry_msgs::Twist keyboard_velocity;
 bool velocity_received = false;
 
 
-// velocity from the keyboard
+//velocity from the keyboard
 void keyboard_vel_callback(const geometry_msgs::Twist::ConstPtr& msg){
     keyboard_velocity = *msg;
     if(keyboard_velocity.linear.x != 0 || keyboard_velocity.angular.z != 0){
