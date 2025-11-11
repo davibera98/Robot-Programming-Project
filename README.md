@@ -50,7 +50,8 @@ rosrun teleop_twist_keyboard_cpp teleop_twist_keyboard cmd_vel:=keyboard_vel_cal
  ```
 cd Robot-Programming-Project
 source devel/setup.bash
-rosrun stage_ros stageros /home/vboxuser/RP_project/Robot-Programming-Project/src/srrg2_configs/navigation_2d/cappero_laser_odom_diag_obstacle_2020-05-06-16-26-03.world
+rosrun stage_ros stageros src/srrg2_configs/navigation_2d/cappero_laser_odom_diag_obstacle_2020-05-06-16-26-03.world
+
 
 ```
 
