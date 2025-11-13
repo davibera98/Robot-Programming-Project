@@ -64,6 +64,11 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
 
     if (index == -1){ 
         ROS_INFO("No obstacles detected!"); 
+        geometry_msgs::Twist msg_send;
+        msg_send.linear.x = keyboard_velocity.linear.x;
+        msg_send.linear.y = keyboard_velocity.linear.y;
+        msg_send.angular.z = keyboard_velocity.angular.z;
+        pub_velocity.publish(msg_send);
         return; 
     }
 
@@ -115,21 +120,27 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
             //ROS_INFO("Moving to ROTATING state");
         }
         else{
-        float force_x = - (obstacle_from_robot.point.x / distance_from_robot) * REPULSIVE_FORCE;
-        float force_y = - (obstacle_from_robot.point.y / distance_from_robot) * REPULSIVE_FORCE;
-        //ROS_INFO("Keyboard Velocity: linear_x = %.2f, linear_y = %.2f, angular_z = %.2f",
-        // keyboard_velocity.linear.x,
-        // keyboard_velocity.linear.y,
-        // keyboard_velocity.angular.z);
+            float force_x = - (obstacle_from_robot.point.x / distance_from_robot) * REPULSIVE_FORCE;
+            float force_y = - (obstacle_from_robot.point.y / distance_from_robot) * REPULSIVE_FORCE;
 
-        //ROS_INFO("Repulsive Force: force_x = %.2f, force_y = %.2f",
-        //        force_x,
-        //        force_y);
+            //ROS_INFO("Keyboard Velocity: linear_x = %.2f, linear_y = %.2f, angular_z = %.2f",
+            // keyboard_velocity.linear.x,
+            // keyboard_velocity.linear.y,
+            // keyboard_velocity.angular.z);
 
-        msg_send.linear.x = keyboard_velocity.linear.x + force_x;
-        msg_send.linear.y = keyboard_velocity.linear.y + force_y;
-        msg_send.angular.z = keyboard_velocity.angular.z;
-    }
+            //ROS_INFO("Repulsive Force: force_x = %.2f, force_y = %.2f",
+            //        force_x,
+            //        force_y);
+
+            msg_send.linear.x = keyboard_velocity.linear.x + force_x;
+            msg_send.linear.y = keyboard_velocity.linear.y + force_y;
+            msg_send.angular.z = keyboard_velocity.angular.z;
+
+            //ROS_INFO("Message Sent: linear_x = %.2f, linear_y = %.2f, angular_z = %.2f",
+            //    msg_send.linear.x,
+            //    msg_send.linear.y,
+            //    msg_send.angular.z);
+        }
         
 
     }
