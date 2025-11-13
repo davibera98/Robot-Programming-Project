@@ -25,6 +25,7 @@ double first_yaw = 0.0;
 bool set_yaw = false;
 const double ROTATION_GOAL = 3.10;  
 float ROTATION_SPEED; // rad/s
+float K_ROT = 0.05;
 
 
 
@@ -134,7 +135,14 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg){
 
             msg_send.linear.x = keyboard_velocity.linear.x + force_x;
             msg_send.linear.y = keyboard_velocity.linear.y + force_y;
-            msg_send.angular.z = keyboard_velocity.angular.z;
+
+            float magnitude = 1.0 / distance_from_robot;                         
+            if(obstacle_from_robot.point.y > 0)
+                msg_send.angular.z = keyboard_velocity.angular.z - K_ROT * magnitude;  
+            else if(obstacle_from_robot.point.y < 0)
+                msg_send.angular.z = keyboard_velocity.angular.z + K_ROT * magnitude;
+            else
+                msg_send.angular.z = keyboard_velocity.angular.z;
 
             //ROS_INFO("Message Sent: linear_x = %.2f, linear_y = %.2f, angular_z = %.2f",
             //    msg_send.linear.x,
